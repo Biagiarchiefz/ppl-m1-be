@@ -7,12 +7,17 @@ import (
 	"ppl-m1-be/config"
 
 	"github.com/gin-gonic/gin"
+
+	apidocs "ppl-m1-be/docs"
 )
 
 func NewRouter(db *sql.DB, cfg config.Config) *gin.Engine {
 	router := gin.Default()
 	
-	router.StaticFile("/openapi.yaml", "./docs/openapi.yaml")
+	router.GET("/openapi.yaml", func(c *gin.Context) {
+		c.Data(http.StatusOK, "application/yaml; charset=utf-8", apidocs.OpenAPI)
+	})
+	
 	router.GET("/api/m1/v1/docs", docsHandler)
 	
 	router.GET("/health", func(c *gin.Context) {
