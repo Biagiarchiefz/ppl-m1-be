@@ -19,11 +19,11 @@ type Handler struct {
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		writeBindError(c, err)
+		httpserver.BindError(c, err)
 		return
 	}
 	if len(req.Password) > maxPasswordBytes {
-		httpserver.FailFields(c, msgValidation, map[string]string{"password": "Kata sandi terlalu panjang"})
+		httpserver.FailFields(c, httpserver.MsgValidation, map[string]string{"password": "Kata sandi terlalu panjang"})
 		return
 	}
 

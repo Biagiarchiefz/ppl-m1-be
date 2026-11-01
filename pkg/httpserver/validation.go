@@ -1,25 +1,24 @@
-package auth_route
+package httpserver
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-
-	"ppl-m1-be/pkg/httpserver"
 )
 
-const msgValidation = "Data yang dikirim tidak valid"
+const MsgValidation = "Data yang dikirim tidak valid"
 
-func writeBindError(c *gin.Context, err error) {
+func BindError(c *gin.Context, err error) {
 	var verr validator.ValidationErrors
 	if errors.As(err, &verr) {
-		httpserver.FailFields(c, msgValidation, toFieldErrors(verr))
+		FailFields(c, MsgValidation, toFieldErrors(verr))
 		return
 	}
-	httpserver.Fail(c, http.StatusBadRequest, httpserver.CodeBadRequest, "Format permintaan tidak valid")
+	Fail(c, http.StatusBadRequest, CodeBadRequest, "Format permintaan tidak valid")
 }
 
 func toFieldErrors(verr validator.ValidationErrors) map[string]string {
@@ -31,8 +30,11 @@ func toFieldErrors(verr validator.ValidationErrors) map[string]string {
 }
 
 func fieldMessage(fe validator.FieldError) string {
-	if fe.Tag() == "email" {
+	switch fe.Tag() {
+	case "email":
 		return "Format email tidak valid"
+	case "min":
+		return fmt.Sprintf("Minimal %s karakter", fe.Param())
 	}
 	return "Isian ini wajib diisi"
 }
