@@ -11,7 +11,10 @@ import (
 
 func NewRouter(db *sql.DB, cfg config.Config) *gin.Engine {
 	router := gin.Default()
-
+	
+	router.StaticFile("/openapi.yaml", "./docs/openapi.yaml")
+	router.GET("/api/m1/v1/docs", docsHandler)
+	
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status": "ok",

@@ -1,0 +1,402 @@
+
+openapi: 3.0.3
+
+info:
+  title: Araya Business Hub - API Modul M1
+  description: |
+    Dokumentasi REST API Modul M1 - Manajemen Pengguna
+    dan Hak Akses.
+
+    API ini menyediakan health check, autentikasi,
+    profil pengguna, logout, dan registrasi customer.
+
+    Autentikasi menggunakan JWT Bearer Token.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local Development
+
+tags:
+  - name: Health
+    description: Pemeriksaan kondisi server
+  - name: Authentication
+    description: Login dan logout pengguna
+  - name: User
+    description: Informasi dan registrasi pengguna
+
+paths:
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Cek kondisi server
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server aktif
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Cek kesiapan database
+      operationId: readinessCheck
+      responses:
+        '200':
+          description: Database terhubung
+          content:
+            application/json:
+              example:
+                status: ready
+                database: connected
+        '503':
+          description: Database tidak dapat diakses
+          content:
+            application/json:
+              example:
+                status: not ready
+                error: database connection failed
+
+  /api/m1/v1/auth/sessions:
+    post:
+      tags:
+        - Authentication
+      summary: Login pengguna
+      description: |
+        Login menggunakan email dan kata sandi.
+        Jika berhasil, sistem mengembalikan JWT.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: kasir@contoh.id
+              password: password123
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Email atau kata sandi salah
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: Email atau kata sandi salah
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/m1/v1/auth/sessions/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout pengguna
+      description: |
+        Endpoint logout membutuhkan Bearer Token.
+        Implementasi saat ini tidak menyimpan blacklist token.
+        Logout hanya mengembalikan respons sukses.
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout berhasil
+          content:
+            application/json:
+              example:
+                success: true
+                data: null
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/m1/v1/me:
+    get:
+      tags:
+        - User
+      summary: Mendapatkan profil pengguna
+      description: Mengambil informasi pengguna dari JWT.
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profil berhasil ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeSuccess'
+              example:
+                success: true
+                data:
+                  user_id: 42
+                  name: Rani Kusumawati
+                  role: kasir
+                  division: penjualan
+                  unit_usaha_id: 3
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/m1/v1/auth/registrations:
+    post:
+      tags:
+        - User
+      summary: Registrasi customer
+      description: |
+        Membuat akun customer baru.
+        Role customer ditentukan oleh sistem.
+      operationId: registerCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: Rani Kusumawati
+              email: rani@contoh.id
+              password: password123
+      responses:
+        '201':
+          description: Registrasi berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email sudah terdaftar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: EMAIL_DUPLICATE
+                  message: Email sudah terdaftar
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: kasir@contoh.id
+        password:
+          type: string
+          maxLength: 72
+          example: password123
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          example: Rani Kusumawati
+        email:
+          type: string
+          format: email
+          example: rani@contoh.id
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          example: password123
+
+    LoginSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: JWT access token
+            token_type:
+              type: string
+              example: Bearer
+            expires_in:
+              type: integer
+              example: 28800
+
+    MeSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          format: int32
+        name:
+          type: string
+        role:
+          type: string
+        division:
+          type: string
+          nullable: true
+        unit_usaha_id:
+          type: integer
+          format: int32
+          nullable: true
+
+    RegisterSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user_id:
+              type: integer
+              format: int32
+            name:
+              type: string
+            email:
+              type: string
+            role:
+              type: string
+              example: customer
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Data yang dikirim tidak valid
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+
+  responses:
+
+    BadRequest:
+      description: Format permintaan tidak valid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: BAD_REQUEST
+              message: Format permintaan tidak valid
+
+    ValidationError:
+      description: Data tidak lolos validasi
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: Data yang dikirim tidak valid
+              fields:
+                email: Format email tidak valid
+
+    Unauthenticated:
+      description: Token tidak valid atau kedaluwarsa
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: UNAUTHENTICATED
+              message: Sesi tidak valid atau telah berakhir, silakan login kembali
+
+    InternalError:
+      description: Kesalahan internal server
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INTERNAL_ERROR
+              message: Terjadi kesalahan pada server
