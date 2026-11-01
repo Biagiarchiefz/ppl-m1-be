@@ -13,6 +13,7 @@ const (
 	CodeForbidden          = "FORBIDDEN"
 	CodeValidation         = "VALIDATION_ERROR"
 	CodeInternal           = "INTERNAL_ERROR"
+	CodeEmailDuplicate     = "EMAIL_DUPLICATE"
 )
 
 func Success(c *gin.Context, status int, data any) {
