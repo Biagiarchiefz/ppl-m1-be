@@ -26,11 +26,11 @@ type Config struct {
 
 func Load() (Config, error) {
 	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
-	return Config{}, fmt.Errorf("gagal membaca file .env: %w", err)
-}
+		return Config{}, fmt.Errorf("gagal membaca file .env: %w", err)
+	}
 
 	cfg := Config{
-		AppName: os.Getenv("APP_NAME"),
+		AppName:    os.Getenv("APP_NAME"),
 		AppPort:    os.Getenv("APP_PORT"),
 		DBHost:     os.Getenv("DB_HOST"),
 		DBPort:     os.Getenv("DB_PORT"),
