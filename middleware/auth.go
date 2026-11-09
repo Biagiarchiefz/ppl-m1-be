@@ -1,70 +1,26 @@
 package middleware
 
 import (
-	"net/http"
-	"slices"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"ppl-m1-be/internal/usecase/utils"
-	"ppl-m1-be/pkg/httpserver"
+	"ppl-m1-be/pkg/m1auth"
 )
 
-const claimsKey = "claims"
-
+// Authenticate memverifikasi token memakai kunci yang sama dengan penerbitnya.
+// Pemeriksaan selengkapnya ada di pkg/m1auth, yang juga dipakai modul lain.
 func Authenticate(tokens *utils.TokenMaker) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		claims, err := tokens.Parse(bearerToken(c.GetHeader("Authorization")))
-		if err != nil {
-			unauthenticated(c)
-			return
-		}
-		c.Set(claimsKey, claims)
-		c.Next()
-	}
+	return m1auth.Authenticate(tokens.Verifier())
 }
 
-func RequireRole(roles ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		claims := GetClaims(c)
-		if claims == nil {
-			unauthenticated(c)
-			return
-		}
-		if !slices.Contains(roles, claims.Role) {
-			forbidden(c)
-			return
-		}
-		c.Next()
-	}
+func RequirePermission(allowed ...string) gin.HandlerFunc {
+	return m1auth.RequirePermission(allowed...)
+}
+
+func RequireOrganization() gin.HandlerFunc {
+	return m1auth.RequireOrganization()
 }
 
 func GetClaims(c *gin.Context) *utils.Claims {
-	value, ok := c.Get(claimsKey)
-	if !ok {
-		return nil
-	}
-	claims, _ := value.(*utils.Claims)
-	return claims
-}
-
-func bearerToken(header string) string {
-	scheme, token, found := strings.Cut(header, " ")
-	if !found || !strings.EqualFold(scheme, "Bearer") {
-		return ""
-	}
-	return strings.TrimSpace(token)
-}
-
-func unauthenticated(c *gin.Context) {
-	httpserver.Fail(c, http.StatusUnauthorized, httpserver.CodeUnauthenticated,
-		"Sesi tidak valid atau telah berakhir, silakan login kembali")
-	c.Abort()
-}
-
-func forbidden(c *gin.Context) {
-	httpserver.Fail(c, http.StatusForbidden, httpserver.CodeForbidden,
-		"Anda tidak memiliki akses ke fitur ini")
-	c.Abort()
+	return m1auth.GetClaims(c)
 }

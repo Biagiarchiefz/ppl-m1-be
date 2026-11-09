@@ -4,29 +4,32 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"ppl-m1-be/pkg/m1auth"
 )
 
-type Claims struct {
-	UserID      int32   `json:"user_id"`
-	Name        string  `json:"name"`
-	Role        string  `json:"role"`
-	Division    *string `json:"division"`
-	UnitUsahaID *int32  `json:"unit_usaha_id"`
-	jwt.RegisteredClaims
-}
+type Claims = m1auth.Claims
 
 type TokenMaker struct {
-	secret []byte
-	issuer string
-	ttl    time.Duration
+	secret   []byte
+	issuer   string
+	ttl      time.Duration
+	verifier *m1auth.Verifier
 }
 
 func NewTokenMaker(secret, issuer string, ttl time.Duration) *TokenMaker {
-	return &TokenMaker{secret: []byte(secret), issuer: issuer, ttl: ttl}
+	return &TokenMaker{
+		secret: []byte(secret), issuer: issuer, ttl: ttl,
+		verifier: m1auth.NewVerifier(secret, issuer),
+	}
 }
 
 func (m *TokenMaker) TTL() time.Duration {
 	return m.ttl
+}
+
+func (m *TokenMaker) Verifier() *m1auth.Verifier {
+	return m.verifier
 }
 
 func (m *TokenMaker) Generate(c Claims) (string, error) {
@@ -35,21 +38,4 @@ func (m *TokenMaker) Generate(c Claims) (string, error) {
 	c.IssuedAt = jwt.NewNumericDate(now)
 	c.ExpiresAt = jwt.NewNumericDate(now.Add(m.ttl))
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(m.secret)
-}
-
-func (m *TokenMaker) Parse(raw string) (*Claims, error) {
-	claims := &Claims{}
-	_, err := jwt.ParseWithClaims(raw, claims, m.keyFunc,
-		jwt.WithValidMethods([]string{"HS256"}),
-		jwt.WithIssuer(m.issuer),
-		jwt.WithExpirationRequired(),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return claims, nil
-}
-
-func (m *TokenMaker) keyFunc(_ *jwt.Token) (any, error) {
-	return m.secret, nil
 }

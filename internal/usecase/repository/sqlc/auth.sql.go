@@ -7,47 +7,174 @@ package sqlc
 
 import (
 	"context"
-	"database/sql"
+	"time"
 )
 
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT u.id,
-       u.email,
-       u.password_hash,
-       u.full_name,
-       u.is_active,
-       u.unit_usaha_id,
-       r.name AS role_name,
-       d.name AS division_name
-FROM users u
-JOIN roles r ON r.id = u.role_id
-LEFT JOIN divisions d ON d.id = u.division_id
-WHERE u.email = $1
+const getUserDetailByEmail = `-- name: GetUserDetailByEmail :one
+SELECT id, organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, is_super_admin, is_active, created_at, role_code, role_is_system, division_code, organization_name, organization_is_active
+FROM user_details
+WHERE lower(email) = lower($1::text)
 `
 
-type GetUserByEmailRow struct {
-	ID           int32
-	Email        string
-	PasswordHash string
-	FullName     string
-	IsActive     bool
-	UnitUsahaID  sql.NullInt32
-	RoleName     string
-	DivisionName sql.NullString
-}
-
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
-	var i GetUserByEmailRow
+func (q *Queries) GetUserDetailByEmail(ctx context.Context, email string) (UserDetail, error) {
+	row := q.db.QueryRowContext(ctx, getUserDetailByEmail, email)
+	var i UserDetail
 	err := row.Scan(
 		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
 		&i.Email,
 		&i.PasswordHash,
-		&i.FullName,
-		&i.IsActive,
+		&i.RoleID,
+		&i.DivisionID,
 		&i.UnitUsahaID,
-		&i.RoleName,
-		&i.DivisionName,
+		&i.IsSuperAdmin,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.RoleCode,
+		&i.RoleIsSystem,
+		&i.DivisionCode,
+		&i.OrganizationName,
+		&i.OrganizationIsActive,
 	)
 	return i, err
+}
+
+const getUserDetailByID = `-- name: GetUserDetailByID :one
+SELECT id, organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, is_super_admin, is_active, created_at, role_code, role_is_system, division_code, organization_name, organization_is_active
+FROM user_details
+WHERE id = $1
+`
+
+func (q *Queries) GetUserDetailByID(ctx context.Context, id int64) (UserDetail, error) {
+	row := q.db.QueryRowContext(ctx, getUserDetailByID, id)
+	var i UserDetail
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.RoleID,
+		&i.DivisionID,
+		&i.UnitUsahaID,
+		&i.IsSuperAdmin,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.RoleCode,
+		&i.RoleIsSystem,
+		&i.DivisionCode,
+		&i.OrganizationName,
+		&i.OrganizationIsActive,
+	)
+	return i, err
+}
+
+const listOrganizationPermissionCodes = `-- name: ListOrganizationPermissionCodes :many
+SELECT code
+FROM permissions
+WHERE module <> 'platform'
+ORDER BY code
+`
+
+func (q *Queries) ListOrganizationPermissionCodes(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listOrganizationPermissionCodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		items = append(items, code)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRolePermissionCodes = `-- name: ListRolePermissionCodes :many
+SELECT permission_code
+FROM role_permissions
+WHERE role_id = $1
+ORDER BY permission_code
+`
+
+func (q *Queries) ListRolePermissionCodes(ctx context.Context, roleID int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listRolePermissionCodes, roleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var permission_code string
+		if err := rows.Scan(&permission_code); err != nil {
+			return nil, err
+		}
+		items = append(items, permission_code)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockUserByID = `-- name: LockUserByID :one
+SELECT id, organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, is_super_admin, is_active, created_by, created_at, updated_at, deactivated_at
+FROM users
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockUserByID(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, lockUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.RoleID,
+		&i.DivisionID,
+		&i.UnitUsahaID,
+		&i.IsSuperAdmin,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeactivatedAt,
+	)
+	return i, err
+}
+
+const updatePassword = `-- name: UpdatePassword :one
+UPDATE users
+SET password_hash = $2,
+    updated_at    = now()
+WHERE id = $1
+RETURNING updated_at
+`
+
+type UpdatePasswordParams struct {
+	ID           int64
+	PasswordHash string
+}
+
+func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, updatePassword, arg.ID, arg.PasswordHash)
+	var updated_at time.Time
+	err := row.Scan(&updated_at)
+	return updated_at, err
 }

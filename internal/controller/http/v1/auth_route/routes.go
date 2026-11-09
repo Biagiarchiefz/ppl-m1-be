@@ -4,17 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"ppl-m1-be/internal/usecase/auth_usecase"
-	"ppl-m1-be/internal/usecase/utils"
-	"ppl-m1-be/middleware"
 )
 
-func Mount(rg *gin.RouterGroup, uc *auth_usecase.Usecase, tokens *utils.TokenMaker) {
+// Mount mendaftarkan endpoint autentikasi. `authenticated` adalah middleware
+// pemeriksa Bearer token; /me dan change-password terbuka untuk semua
+// pengguna yang login, termasuk super admin.
+func Mount(rg *gin.RouterGroup, uc *auth_usecase.Usecase, authenticated gin.HandlerFunc) {
 	handler := &Handler{uc: uc}
-	protected := middleware.Authenticate(tokens)
 
-	sessions := rg.Group("/auth/sessions")
-	sessions.POST("", handler.Login)
-	sessions.POST("/logout", protected, handler.Logout)
-
-	rg.GET("/me", protected, handler.Me)
+	rg.POST("/auth/login", handler.Login)
+	rg.POST("/auth/change-password", authenticated, handler.ChangePassword)
+	rg.GET("/me", authenticated, handler.Me)
 }

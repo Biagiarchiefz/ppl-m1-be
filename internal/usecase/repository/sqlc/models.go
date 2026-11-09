@@ -12,50 +12,97 @@ import (
 )
 
 type AuditLog struct {
-	ID           int32
-	UserID       sql.NullInt32
-	SourceModule string
-	Action       string
-	Entity       string
-	EntityID     sql.NullString
-	OldValue     pqtype.NullRawMessage
-	NewValue     pqtype.NullRawMessage
-	IpAddress    sql.NullString
-	CreatedAt    time.Time
+	ID               int64
+	OrganizationID   sql.NullInt64
+	UserID           sql.NullInt64
+	Action           string
+	Resource         string
+	ResourceID       sql.NullInt64
+	OldValue         pqtype.NullRawMessage
+	NewValue         pqtype.NullRawMessage
+	IpAddress        sql.NullString
+	UserAgent        sql.NullString
+	CreatedAt        time.Time
+	ActorName        sql.NullString
+	ActorEmail       sql.NullString
+	OrganizationName sql.NullString
 }
 
 type Division struct {
-	Name      string
-	IsActive  bool
-	CreatedAt time.Time
-	ID        int32
+	ID             int64
+	OrganizationID int64
+	Code           string
+	Name           string
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type Organization struct {
+	ID            int64
+	Code          string
+	Name          string
+	IsActive      bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeactivatedAt sql.NullTime
 }
 
 type Permission struct {
 	Code        string
+	Module      string
 	Description string
-	ID          int32
 }
 
 type Role struct {
-	Name string
-	ID   int32
+	ID             int64
+	OrganizationID int64
+	Code           string
+	Name           string
+	Description    sql.NullString
+	IsSystem       bool
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type RolePermission struct {
-	RoleID       int32
-	PermissionID int32
+	RoleID         int64
+	PermissionCode string
 }
 
 type User struct {
-	Email        string
-	PasswordHash string
-	FullName     string
-	IsActive     bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	UnitUsahaID  sql.NullInt32
-	ID           int32
-	DivisionID   sql.NullInt32
-	RoleID       int32
+	ID             int64
+	OrganizationID sql.NullInt64
+	Name           string
+	Email          string
+	PasswordHash   string
+	RoleID         sql.NullInt64
+	DivisionID     sql.NullInt64
+	UnitUsahaID    sql.NullInt64
+	IsSuperAdmin   bool
+	IsActive       bool
+	CreatedBy      sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeactivatedAt  sql.NullTime
+}
+
+type UserDetail struct {
+	ID                   int64
+	OrganizationID       sql.NullInt64
+	Name                 string
+	Email                string
+	PasswordHash         string
+	RoleID               sql.NullInt64
+	DivisionID           sql.NullInt64
+	UnitUsahaID          sql.NullInt64
+	IsSuperAdmin         bool
+	IsActive             bool
+	CreatedAt            time.Time
+	RoleCode             sql.NullString
+	RoleIsSystem         sql.NullBool
+	DivisionCode         sql.NullString
+	OrganizationName     sql.NullString
+	OrganizationIsActive sql.NullBool
 }

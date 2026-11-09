@@ -7,48 +7,350 @@ package sqlc
 
 import (
 	"context"
+	"database/sql"
 )
 
+const activateUser = `-- name: ActivateUser :exec
+UPDATE users
+SET is_active      = TRUE,
+    deactivated_at = NULL,
+    updated_at     = now()
+WHERE id = $1
+`
+
+func (q *Queries) ActivateUser(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, activateUser, id)
+	return err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT count(*)
+FROM user_details
+WHERE organization_id = $1
+  AND ($2::text IS NULL
+       OR name ILIKE '%' || $2::text || '%'
+       OR email ILIKE '%' || $2::text || '%')
+  AND ($3::text IS NULL OR role_code = $3::text)
+  AND ($4::text IS NULL OR division_code = $4::text)
+  AND ($5::bigint IS NULL OR unit_usaha_id = $5::bigint)
+  AND ($6::boolean IS NULL OR is_active = $6::boolean)
+`
+
+type CountUsersParams struct {
+	OrganizationID sql.NullInt64
+	Q              sql.NullString
+	Role           sql.NullString
+	Division       sql.NullString
+	UnitUsahaID    sql.NullInt64
+	IsActive       sql.NullBool
+}
+
+func (q *Queries) CountUsers(ctx context.Context, arg CountUsersParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers,
+		arg.OrganizationID,
+		arg.Q,
+		arg.Role,
+		arg.Division,
+		arg.UnitUsahaID,
+		arg.IsActive,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createSuperAdmin = `-- name: CreateSuperAdmin :one
+INSERT INTO users (name, email, password_hash, is_super_admin)
+VALUES ($1, $2, $3, TRUE)
+RETURNING id
+`
+
+type CreateSuperAdminParams struct {
+	Name         string
+	Email        string
+	PasswordHash string
+}
+
+func (q *Queries) CreateSuperAdmin(ctx context.Context, arg CreateSuperAdminParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, createSuperAdmin, arg.Name, arg.Email, arg.PasswordHash)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password_hash, full_name, role_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, full_name
+INSERT INTO users (organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id
 `
 
 type CreateUserParams struct {
-	Email        string
-	PasswordHash string
-	FullName     string
-	RoleID       int32
+	OrganizationID sql.NullInt64
+	Name           string
+	Email          string
+	PasswordHash   string
+	RoleID         sql.NullInt64
+	DivisionID     sql.NullInt64
+	UnitUsahaID    sql.NullInt64
+	CreatedBy      sql.NullInt64
 }
 
-type CreateUserRow struct {
-	ID       int32
-	Email    string
-	FullName string
-}
-
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, createUser,
+		arg.OrganizationID,
+		arg.Name,
 		arg.Email,
 		arg.PasswordHash,
-		arg.FullName,
 		arg.RoleID,
+		arg.DivisionID,
+		arg.UnitUsahaID,
+		arg.CreatedBy,
 	)
-	var i CreateUserRow
-	err := row.Scan(&i.ID, &i.Email, &i.FullName)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const deactivateUser = `-- name: DeactivateUser :exec
+UPDATE users
+SET is_active      = FALSE,
+    deactivated_at = now(),
+    updated_at     = now()
+WHERE id = $1
+`
+
+func (q *Queries) DeactivateUser(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deactivateUser, id)
+	return err
+}
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users
+WHERE id = $1
+`
+
+// Hapus permanen. Audit log tetap ada (user_id menjadi NULL, salinan
+// nama/email pelaku tetap tersimpan).
+func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUser, id)
+	return err
+}
+
+const getActiveDivisionIDByCode = `-- name: GetActiveDivisionIDByCode :one
+SELECT id
+FROM divisions
+WHERE organization_id = $1 AND code = $2 AND is_active
+`
+
+type GetActiveDivisionIDByCodeParams struct {
+	OrganizationID int64
+	Code           string
+}
+
+func (q *Queries) GetActiveDivisionIDByCode(ctx context.Context, arg GetActiveDivisionIDByCodeParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getActiveDivisionIDByCode, arg.OrganizationID, arg.Code)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getActiveRoleIDByCode = `-- name: GetActiveRoleIDByCode :one
+SELECT id
+FROM roles
+WHERE organization_id = $1 AND code = $2 AND is_active
+`
+
+type GetActiveRoleIDByCodeParams struct {
+	OrganizationID int64
+	Code           string
+}
+
+func (q *Queries) GetActiveRoleIDByCode(ctx context.Context, arg GetActiveRoleIDByCodeParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getActiveRoleIDByCode, arg.OrganizationID, arg.Code)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getUserDetailInOrg = `-- name: GetUserDetailInOrg :one
+SELECT id, organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, is_super_admin, is_active, created_at, role_code, role_is_system, division_code, organization_name, organization_is_active
+FROM user_details
+WHERE id = $1 AND organization_id = $2
+`
+
+type GetUserDetailInOrgParams struct {
+	ID             int64
+	OrganizationID sql.NullInt64
+}
+
+func (q *Queries) GetUserDetailInOrg(ctx context.Context, arg GetUserDetailInOrgParams) (UserDetail, error) {
+	row := q.db.QueryRowContext(ctx, getUserDetailInOrg, arg.ID, arg.OrganizationID)
+	var i UserDetail
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.RoleID,
+		&i.DivisionID,
+		&i.UnitUsahaID,
+		&i.IsSuperAdmin,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.RoleCode,
+		&i.RoleIsSystem,
+		&i.DivisionCode,
+		&i.OrganizationName,
+		&i.OrganizationIsActive,
+	)
 	return i, err
 }
 
-const getRoleIDByName = `-- name: GetRoleIDByName :one
-SELECT id
-FROM roles
-WHERE LOWER(name) = LOWER($1::text)
+const listUsers = `-- name: ListUsers :many
+SELECT id, organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, is_super_admin, is_active, created_at, role_code, role_is_system, division_code, organization_name, organization_is_active
+FROM user_details
+WHERE organization_id = $1
+  AND ($2::text IS NULL
+       OR name ILIKE '%' || $2::text || '%'
+       OR email ILIKE '%' || $2::text || '%')
+  AND ($3::text IS NULL OR role_code = $3::text)
+  AND ($4::text IS NULL OR division_code = $4::text)
+  AND ($5::bigint IS NULL OR unit_usaha_id = $5::bigint)
+  AND ($6::boolean IS NULL OR is_active = $6::boolean)
+ORDER BY
+  CASE WHEN $7::text = 'name' THEN name END ASC,
+  CASE WHEN $7::text = '-name' THEN name END DESC,
+  CASE WHEN $7::text = 'email' THEN email END ASC,
+  CASE WHEN $7::text = '-email' THEN email END DESC,
+  CASE WHEN $7::text = 'created_at' THEN created_at END ASC,
+  CASE WHEN $7::text = 'created_at' THEN id END ASC,
+  created_at DESC,
+  id DESC
+LIMIT $9 OFFSET $8
 `
 
-func (q *Queries) GetRoleIDByName(ctx context.Context, roleName string) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getRoleIDByName, roleName)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
+type ListUsersParams struct {
+	OrganizationID sql.NullInt64
+	Q              sql.NullString
+	Role           sql.NullString
+	Division       sql.NullString
+	UnitUsahaID    sql.NullInt64
+	IsActive       sql.NullBool
+	Sort           string
+	OffsetRows     int32
+	LimitRows      int32
+}
+
+func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]UserDetail, error) {
+	rows, err := q.db.QueryContext(ctx, listUsers,
+		arg.OrganizationID,
+		arg.Q,
+		arg.Role,
+		arg.Division,
+		arg.UnitUsahaID,
+		arg.IsActive,
+		arg.Sort,
+		arg.OffsetRows,
+		arg.LimitRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserDetail
+	for rows.Next() {
+		var i UserDetail
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Name,
+			&i.Email,
+			&i.PasswordHash,
+			&i.RoleID,
+			&i.DivisionID,
+			&i.UnitUsahaID,
+			&i.IsSuperAdmin,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.RoleCode,
+			&i.RoleIsSystem,
+			&i.DivisionCode,
+			&i.OrganizationName,
+			&i.OrganizationIsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockUserInOrg = `-- name: LockUserInOrg :one
+SELECT id, organization_id, name, email, password_hash, role_id, division_id, unit_usaha_id, is_super_admin, is_active, created_by, created_at, updated_at, deactivated_at
+FROM users
+WHERE id = $1 AND organization_id = $2
+FOR UPDATE
+`
+
+type LockUserInOrgParams struct {
+	ID             int64
+	OrganizationID sql.NullInt64
+}
+
+func (q *Queries) LockUserInOrg(ctx context.Context, arg LockUserInOrgParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, lockUserInOrg, arg.ID, arg.OrganizationID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.RoleID,
+		&i.DivisionID,
+		&i.UnitUsahaID,
+		&i.IsSuperAdmin,
+		&i.IsActive,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeactivatedAt,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+SET name          = $2,
+    role_id       = $3,
+    division_id   = $4,
+    unit_usaha_id = $5,
+    updated_at    = now()
+WHERE id = $1
+`
+
+type UpdateUserParams struct {
+	ID          int64
+	Name        string
+	RoleID      sql.NullInt64
+	DivisionID  sql.NullInt64
+	UnitUsahaID sql.NullInt64
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser,
+		arg.ID,
+		arg.Name,
+		arg.RoleID,
+		arg.DivisionID,
+		arg.UnitUsahaID,
+	)
+	return err
 }

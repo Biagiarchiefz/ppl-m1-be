@@ -1,39 +1,43 @@
 package httpserver
 
 import (
-	"net/http"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	CodeBadRequest         = "BAD_REQUEST"
-	CodeInvalidCredentials = "INVALID_CREDENTIALS"
-	CodeUnauthenticated    = "UNAUTHENTICATED"
-	CodeForbidden          = "FORBIDDEN"
-	CodeValidation         = "VALIDATION_ERROR"
-	CodeInternal           = "INTERNAL_ERROR"
-	CodeEmailDuplicate     = "EMAIL_DUPLICATE"
-)
+// Internal mencatat detail galat ke log server dan mengirim 500 tanpa
+// membocorkan detail ke klien.
+func Internal(c *gin.Context, action string, err error) {
+	slog.ErrorContext(c.Request.Context(), action, "error", err)
+	Fail(c, ErrInternal)
+}
 
 func Success(c *gin.Context, status int, data any) {
 	c.JSON(status, gin.H{"success": true, "data": data})
 }
 
-func Fail(c *gin.Context, status int, code, message string) {
-	c.JSON(status, gin.H{
-		"success": false,
-		"error":   gin.H{"code": code, "message": message},
-	})
+func SuccessList(c *gin.Context, data any, meta Meta) {
+	c.JSON(200, gin.H{"success": true, "data": data, "meta": meta})
 }
 
-func FailFields(c *gin.Context, message string, fields map[string]string) {
-	c.JSON(http.StatusUnprocessableEntity, gin.H{
+// Fail mengirim galat tanpa `fields` (nilainya null sesuai panduan).
+func Fail(c *gin.Context, e APIError) {
+	writeError(c, e, nil)
+}
+
+// FailFields mengirim galat validasi dengan `fields` berisi pesan per field.
+func FailFields(c *gin.Context, e APIError, fields map[string]string) {
+	writeError(c, e, fields)
+}
+
+func writeError(c *gin.Context, e APIError, fields map[string]string) {
+	var payloadFields any
+	if len(fields) > 0 {
+		payloadFields = fields
+	}
+	c.JSON(e.Status, gin.H{
 		"success": false,
-		"error": gin.H{
-			"code":    CodeValidation,
-			"message": message,
-			"fields":  fields,
-		},
+		"error":   gin.H{"code": e.Code, "message": e.Message, "fields": payloadFields},
 	})
 }

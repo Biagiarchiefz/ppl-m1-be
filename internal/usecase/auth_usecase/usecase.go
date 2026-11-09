@@ -1,26 +1,26 @@
 package auth_usecase
 
 import (
-	"ppl-m1-be/internal/usecase/audit_usecase"
+	"ppl-m1-be/internal/usecase/repository"
 	"ppl-m1-be/internal/usecase/utils"
 )
 
 type Usecase struct {
-	store     userStore
+	store     *repository.Store
 	tokens    *utils.TokenMaker
-	audit     audit_usecase.Logger
 	dummyHash string
 }
 
-func New(store userStore, tokens *utils.TokenMaker, audit audit_usecase.Logger) *Usecase {
+func New(store *repository.Store, tokens *utils.TokenMaker) *Usecase {
 	return &Usecase{
 		store:     store,
 		tokens:    tokens,
-		audit:     audit,
 		dummyHash: newDummyHash(),
 	}
 }
 
+// newDummyHash dipakai saat email tidak terdaftar agar waktu respons sama
+// dengan saat kata sandi salah.
 func newDummyHash() string {
 	hash, err := utils.HashPassword("dummy-password-for-timing")
 	if err != nil {
