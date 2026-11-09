@@ -46,6 +46,50 @@ var (
 	ErrDivisionAlreadyActv  = APIError{http.StatusConflict, "DIVISION_ALREADY_ACTIVE", "Divisi sudah aktif"}
 	ErrOrgAlreadyActive     = APIError{http.StatusConflict, "ORGANIZATION_ALREADY_ACTIVE", "Organisasi sudah aktif"}
 	ErrOrgStillActive       = APIError{http.StatusConflict, "ORGANIZATION_STILL_ACTIVE", "Nonaktifkan organisasi terlebih dahulu sebelum menghapus permanen"}
+
+	// Pengajuan organisasi.
+	ErrApplicationNotFound = APIError{http.StatusNotFound, "ORGANIZATION_APPLICATION_NOT_FOUND", "Pengajuan organisasi tidak ditemukan"}
+	ErrApplicationPending  = APIError{http.StatusConflict, "ORGANIZATION_APPLICATION_PENDING", "Masih ada pengajuan dengan kode atau email ini yang menunggu persetujuan"}
+	ErrApplicationStatus   = APIError{http.StatusConflict, "ORGANIZATION_APPLICATION_STATUS_INVALID", "Pengajuan ini sudah ditinjau"}
+
+	// M2.
+	ErrBusinessUnitNotFound  = APIError{http.StatusNotFound, "BUSINESS_UNIT_NOT_FOUND", "Unit usaha tidak ditemukan"}
+	ErrBusinessUnitCodeDup   = APIError{http.StatusConflict, "BUSINESS_UNIT_CODE_DUPLICATE", "Kode unit usaha sudah dipakai"}
+	ErrBusinessUnitUnchanged = APIError{http.StatusConflict, "BUSINESS_UNIT_STATUS_UNCHANGED", "Status unit usaha sudah sesuai"}
+
+	// M3.
+	ErrPartnerNotFound      = APIError{http.StatusNotFound, "PARTNER_NOT_FOUND", "Partner tidak ditemukan"}
+	ErrPartnerRoleMissing   = APIError{http.StatusConflict, "PARTNER_ROLE_UNAVAILABLE", "Pendaftaran partner belum dibuka untuk organisasi ini"}
+	ErrPartnerStatusInvalid = APIError{http.StatusConflict, "PARTNER_STATUS_INVALID", "Perubahan status partner tidak diizinkan"}
+	ErrPartnerNotVerified   = APIError{http.StatusForbidden, "PARTNER_NOT_VERIFIED", "Partner belum terverifikasi atau sedang ditangguhkan"}
+
+	// M4.
+	ErrProductNotFound        = APIError{http.StatusNotFound, "PRODUCT_NOT_FOUND", "Produk tidak ditemukan"}
+	ErrProductUnchanged       = APIError{http.StatusConflict, "PRODUCT_STATUS_UNCHANGED", "Status produk sudah sesuai"}
+	ErrCustomerNotFound       = APIError{http.StatusNotFound, "CUSTOMER_NOT_FOUND", "Pelanggan tidak ditemukan"}
+	ErrCustomerEmailDuplicate = APIError{http.StatusConflict, "CUSTOMER_EMAIL_DUPLICATE", "Email pelanggan sudah terdaftar"}
+	ErrQuotationNotFound      = APIError{http.StatusNotFound, "QUOTATION_NOT_FOUND", "Quotation tidak ditemukan"}
+	ErrQuotationStatusInvalid = APIError{http.StatusConflict, "QUOTATION_STATUS_INVALID", "Quotation sudah ditanggapi"}
+	ErrQuotationNotApproved   = APIError{http.StatusConflict, "QUOTATION_NOT_APPROVED", "Invoice hanya dapat dibuat dari quotation yang sudah disetujui"}
+	ErrInvoiceNotFound        = APIError{http.StatusNotFound, "INVOICE_NOT_FOUND", "Invoice tidak ditemukan"}
+	ErrInvoiceAlreadyExists   = APIError{http.StatusConflict, "INVOICE_ALREADY_EXISTS", "Invoice untuk quotation ini sudah dibuat"}
+	ErrInvoiceAlreadyPaid     = APIError{http.StatusConflict, "INVOICE_ALREADY_PAID", "Invoice sudah lunas"}
+	ErrOrderNotFound          = APIError{http.StatusNotFound, "ORDER_NOT_FOUND", "Order tidak ditemukan"}
+	ErrOrderCompleted         = APIError{http.StatusConflict, "ORDER_ALREADY_COMPLETED", "Order yang sudah selesai tidak dapat diubah"}
+	ErrOrderStatusInvalid     = APIError{http.StatusConflict, "ORDER_STATUS_INVALID", "Urutan status order tidak valid"}
+
+	ErrOutOfStock        = APIError{http.StatusConflict, "OUT_OF_STOCK", "Stok produk tidak mencukupi"}
+	ErrOrderCancelDenied = APIError{http.StatusConflict, "ORDER_CANCEL_NOT_ALLOWED", "Order hanya dapat dibatalkan saat berstatus baru"}
+	ErrOrderAlreadyPaid  = APIError{http.StatusConflict, "ORDER_ALREADY_PAID", "Order yang sudah dibayar tidak dapat dibatalkan"}
+	ErrInvoiceCancelled  = APIError{http.StatusConflict, "INVOICE_CANCELLED", "Invoice sudah dibatalkan"}
+
+	// M5.
+	ErrServiceReqNotFound  = APIError{http.StatusNotFound, "SERVICE_REQUEST_NOT_FOUND", "Permintaan layanan tidak ditemukan"}
+	ErrServiceReqStatus    = APIError{http.StatusConflict, "SERVICE_REQUEST_STATUS_INVALID", "Urutan status permintaan tidak valid"}
+	ErrCustomerRoleMissing = APIError{http.StatusConflict, "CUSTOMER_ROLE_UNAVAILABLE", "Pendaftaran customer belum dibuka untuk organisasi ini"}
+	ErrCartEmpty           = APIError{http.StatusConflict, "CART_EMPTY", "Keranjang masih kosong"}
+	ErrCartItemNotFound    = APIError{http.StatusNotFound, "CART_ITEM_NOT_FOUND", "Item tidak ada di keranjang"}
+	ErrCartItemUnavailable = APIError{http.StatusConflict, "CART_ITEM_UNAVAILABLE", "Ada produk di keranjang yang sudah tidak tersedia"}
 )
 
 // Pesan per field untuk `error.fields`.

@@ -41,6 +41,51 @@ var (
 	OrganizationAlreadyInactive = errors.New("organisasi sudah nonaktif")
 	OrganizationAlreadyActive   = errors.New("organisasi sudah aktif")
 	OrganizationStillActive     = errors.New("organisasi masih aktif")
+
+	ApplicationNotFound      = errors.New("pengajuan organisasi tidak ditemukan")
+	ApplicationPending       = errors.New("pengajuan organisasi masih menunggu")
+	ApplicationStatusInvalid = errors.New("pengajuan organisasi sudah ditinjau")
+
+	Forbidden = errors.New("tidak berwenang")
+
+	BusinessUnitNotFound        = errors.New("unit usaha tidak ditemukan")
+	BusinessUnitCodeTaken       = errors.New("kode unit usaha sudah dipakai")
+	BusinessUnitStatusUnchanged = errors.New("status unit usaha tidak berubah")
+
+	PartnerNotFound        = errors.New("partner tidak ditemukan")
+	PartnerRoleUnavailable = errors.New("peran partner belum tersedia")
+	PartnerStatusInvalid   = errors.New("perubahan status partner tidak diizinkan")
+	PartnerNotVerified     = errors.New("partner belum terverifikasi")
+
+	ProductNotFound        = errors.New("produk tidak ditemukan")
+	ProductStatusUnchanged = errors.New("status produk tidak berubah")
+	CustomerNotFound       = errors.New("pelanggan tidak ditemukan")
+	CustomerEmailTaken     = errors.New("email pelanggan sudah terdaftar")
+
+	QuotationNotFound      = errors.New("quotation tidak ditemukan")
+	QuotationStatusInvalid = errors.New("quotation sudah ditanggapi")
+	QuotationNotApproved   = errors.New("quotation belum disetujui")
+
+	InvoiceNotFound      = errors.New("invoice tidak ditemukan")
+	InvoiceAlreadyExists = errors.New("invoice sudah dibuat")
+	InvoiceAlreadyPaid   = errors.New("invoice sudah lunas")
+
+	OrderNotFound      = errors.New("order tidak ditemukan")
+	OrderCompleted     = errors.New("order sudah selesai")
+	OrderStatusInvalid = errors.New("urutan status order tidak valid")
+
+	OutOfStock            = errors.New("stok tidak mencukupi")
+	OrderCancelNotAllowed = errors.New("order tidak dapat dibatalkan")
+	OrderAlreadyPaid      = errors.New("order sudah dibayar")
+	InvoiceCancelled      = errors.New("invoice sudah dibatalkan")
+
+	ServiceRequestNotFound      = errors.New("permintaan layanan tidak ditemukan")
+	ServiceRequestStatusInvalid = errors.New("urutan status permintaan tidak valid")
+	CustomerRoleUnavailable     = errors.New("peran customer belum tersedia")
+
+	CartEmpty           = errors.New("keranjang kosong")
+	CartItemNotFound    = errors.New("item keranjang tidak ditemukan")
+	CartItemUnavailable = errors.New("ada produk keranjang yang tidak tersedia")
 )
 
 // FieldErrors adalah galat validasi yang butuh data dari database, misalnya

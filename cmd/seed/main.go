@@ -18,6 +18,7 @@ import (
 	"ppl-m1-be/internal/app"
 	"ppl-m1-be/internal/usecase/repository"
 	"ppl-m1-be/internal/usecase/repository/sqlc"
+	"ppl-m1-be/internal/usecase/role_usecase"
 	"ppl-m1-be/internal/usecase/utils"
 )
 
@@ -76,8 +77,25 @@ func seed(ctx context.Context, store *repository.Store, adm admin) error {
 				return fmt.Errorf("seed izin %s: %w", p.Code, err)
 			}
 		}
+		if err := seedDefaultRoles(ctx, q); err != nil {
+			return err
+		}
 		return seedSuperAdmin(ctx, q, adm, hash)
 	})
+}
+
+// seedDefaultRoles melengkapi organisasi yang dibuat sebelum modul M2-M5 ada.
+func seedDefaultRoles(ctx context.Context, q *sqlc.Queries) error {
+	ids, err := q.ListAllOrganizationIDs(ctx)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := role_usecase.ProvisionDefaults(ctx, q, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func seedSuperAdmin(ctx context.Context, q *sqlc.Queries, adm admin, hash string) error {

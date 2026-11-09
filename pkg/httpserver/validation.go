@@ -26,6 +26,9 @@ func UseJSONFieldNames() {
 		}
 		return name
 	})
+	_ = v.RegisterValidation("notblank", func(fl validator.FieldLevel) bool {
+		return strings.TrimSpace(fl.Field().String()) != ""
+	})
 }
 
 func BindError(c *gin.Context, err error) {
@@ -49,12 +52,23 @@ func toFieldErrors(verr validator.ValidationErrors) map[string]string {
 	return fields
 }
 
+func maxMessage(fe validator.FieldError) string {
+	if fe.Kind() == reflect.String {
+		return fmt.Sprintf("Maksimal %s karakter", fe.Param())
+	}
+	return fmt.Sprintf("Nilai maksimal %s", fe.Param())
+}
+
 func fieldMessage(fe validator.FieldError) string {
 	switch fe.Tag() {
 	case "email":
 		return MsgFieldEmail
 	case "max":
-		return fmt.Sprintf("Maksimal %s karakter", fe.Param())
+		return maxMessage(fe)
+	case "gte", "gt", "min":
+		return "Nilai terlalu kecil"
+	case "oneof":
+		return "Nilai tidak valid"
 	}
 	return MsgFieldRequired
 }

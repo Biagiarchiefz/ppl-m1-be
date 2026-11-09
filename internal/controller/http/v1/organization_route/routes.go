@@ -20,4 +20,10 @@ func Mount(rg *gin.RouterGroup, uc *organization_usecase.Usecase, authenticated 
 	platform.PATCH("/:id/status", handler.SetStatus)
 	platform.DELETE("/:id", handler.Deactivate)
 	platform.DELETE("/:id/permanent", handler.Delete)
+
+	rg.POST("/organization-applications", handler.Apply)
+	rg.POST("/organization-application-lookups", handler.LookupApplication)
+	review := rg.Group("/organization-applications", authenticated, middleware.RequirePermission(utils.PermOrganizationsManage))
+	review.GET("", handler.ListApplications)
+	review.PATCH("/:id/status", handler.ReviewApplication)
 }

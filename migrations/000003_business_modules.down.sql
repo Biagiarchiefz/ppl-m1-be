@@ -1,0 +1,20 @@
+DROP VIEW IF EXISTS service_request_details;
+DROP VIEW IF EXISTS order_details;
+DROP VIEW IF EXISTS invoice_details;
+DROP VIEW IF EXISTS quotation_details;
+DROP VIEW IF EXISTS product_details;
+DROP VIEW IF EXISTS business_unit_details;
+
+DROP TABLE IF EXISTS service_requests;
+DROP TABLE IF EXISTS cart_items;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS invoices;
+DROP TABLE IF EXISTS quotation_items;
+DROP TABLE IF EXISTS quotations;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS partners;
+DROP TABLE IF EXISTS dashboard_metrics;
+DROP TABLE IF EXISTS business_units;

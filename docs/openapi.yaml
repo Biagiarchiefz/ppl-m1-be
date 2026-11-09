@@ -20,6 +20,14 @@ servers:
     description: Local Development
 
 tags:
+  - name: M2
+    description: Unit usaha dan Dashboard Operasional Dasar
+  - name: M3
+    description: Registrasi dan verifikasi Partner
+  - name: M4
+    description: Produk, pelanggan, quotation, invoice, pembayaran sandbox, order
+  - name: M5
+    description: Katalog, permintaan layanan, keranjang, checkout, pencarian
   - name: Health
   - name: Auth
     description: Login, profil (K-01), dan ubah kata sandi
@@ -624,6 +632,642 @@ paths:
         '400': { $ref: '#/components/responses/InvalidParameter' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  # ---- M2: unit usaha dan Dashboard Operasional Dasar ----
+  /api/m2/v1/business-units:
+    get:
+      tags: [M2]
+      summary: Daftar unit usaha
+      description: Tanpa izin `m2.business_units.manage`, hanya unit aktif yang dikembalikan.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: is_active, in: query, schema: { type: boolean } }
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Daftar unit usaha }
+    post:
+      tags: [M2]
+      summary: Tambah unit usaha
+      description: 'Izin: `m2.business_units.manage`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, category]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                category: { type: string }
+                division_id: { type: integer, nullable: true }
+                description: { type: string, nullable: true }
+                address: { type: string, nullable: true }
+                phone: { type: string, nullable: true }
+                email: { type: string, nullable: true }
+      responses:
+        '201': { description: Unit usaha dibuat }
+        '409': { description: '`BUSINESS_UNIT_CODE_DUPLICATE`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m2/v1/business-units/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [M2]
+      summary: Detail unit usaha
+      responses:
+        '200': { description: Unit usaha }
+        '404': { description: '`BUSINESS_UNIT_NOT_FOUND`' }
+    patch:
+      tags: [M2]
+      summary: Ubah profil unit usaha
+      description: 'Izin: `m2.business_units.manage`. Body sama dengan tambah, tanpa `code`.'
+      responses:
+        '200': { description: Unit usaha diperbarui }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m2/v1/business-units/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M2]
+      summary: Aktifkan atau nonaktifkan unit usaha
+      description: 'Izin: `m2.business_units.manage`. Body: `{ "is_active": boolean }`.'
+      responses:
+        '200': { description: Status diperbarui }
+        '409': { description: '`BUSINESS_UNIT_STATUS_UNCHANGED`' }
+
+  /api/m2/v1/dashboard:
+    get:
+      tags: [M2]
+      summary: Isi Dashboard Operasional Dasar
+      description: 'Izin: `m2.dashboard.read`. Tanpa data, `items` berupa daftar kosong.'
+      parameters:
+        - { name: business_unit_id, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: 'Data `{ items: [...] }`' }
+        '400': { $ref: '#/components/responses/InvalidParameter' }
+
+  /api/m2/v1/dashboard/metrics:
+    post:
+      tags: [M2]
+      summary: Alirkan data modul lain ke dashboard
+      description: 'Izin: `m2.dashboard.write`. `value` ditambahkan ke akumulasi harian unit usaha.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_unit_id, source_module, metric_key, label, unit, value]
+              properties:
+                business_unit_id: { type: integer }
+                source_module: { type: string }
+                metric_key: { type: string }
+                label: { type: string }
+                unit: { type: string }
+                value: { type: integer }
+                period_date: { type: string, format: date, nullable: true }
+      responses:
+        '201': { description: Data diterima }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ---- M3: registrasi dan verifikasi Partner ----
+  /api/m3/v1/partner-registrations:
+    post:
+      tags: [M3]
+      summary: Daftar sebagai partner
+      description: Publik. Membuat data partner berstatus `pending` beserta akun login.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_code, business_name, business_type, contact_name, email, password, phone, address]
+              properties:
+                organization_code: { type: string }
+                business_name: { type: string }
+                business_type: { type: string }
+                contact_name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string }
+                phone: { type: string }
+                address: { type: string }
+                description: { type: string, nullable: true }
+      responses:
+        '201': { description: Pendaftaran tersimpan dengan status pending }
+        '409': { description: '`EMAIL_DUPLICATE` atau `PARTNER_ROLE_UNAVAILABLE`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m3/v1/partner-registrations/organizations/{code}:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [M3]
+      summary: Kenali organisasi dari tautan pendaftaran
+      description: Publik. Mengembalikan `code` dan `name` organisasi aktif.
+      security: []
+      responses:
+        '200': { description: Organisasi tujuan pendaftaran }
+        '404': { description: '`ORGANIZATION_NOT_FOUND`' }
+
+  /api/m3/v1/partner-registration-link:
+    get:
+      tags: [M3]
+      summary: Data organisasi untuk tautan pendaftaran partner
+      description: 'Izin: `m3.partners.manage`. Tautannya berbentuk `/register-partner?org={code}`.'
+      responses:
+        '200': { description: 'Data `{ code, name }`' }
+
+  /api/m1/v1/organization-applications:
+    post:
+      tags: [Organizations]
+      summary: Ajukan organisasi baru
+      description: 'Publik. Body: `code`, `organization_name`, `admin_name`, `admin_email`, `password`, `phone`, `description`. Organisasi dibuat setelah disetujui super admin.'
+      security: []
+      responses:
+        '201': { description: Pengajuan tersimpan dengan status pending }
+        '409': { description: '`ORGANIZATION_CODE_DUPLICATE`, `EMAIL_DUPLICATE`, atau `ORGANIZATION_APPLICATION_PENDING`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    get:
+      tags: [Organizations]
+      summary: Daftar pengajuan organisasi
+      description: 'Izin: `platform.organizations.manage`.'
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: status, in: query, schema: { type: string, enum: [pending, disetujui, ditolak] } }
+      responses:
+        '200': { description: Daftar pengajuan }
+
+  /api/m1/v1/organization-application-lookups:
+    post:
+      tags: [Organizations]
+      summary: Cek status pengajuan organisasi
+      description: 'Publik. Body: `email` dan `password` yang dipakai saat mengajukan.'
+      security: []
+      responses:
+        '200': { description: Pengajuan terakhir milik pemohon }
+        '401': { description: '`INVALID_CREDENTIALS`' }
+
+  /api/m1/v1/organization-applications/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Organizations]
+      summary: Setujui atau tolak pengajuan organisasi
+      description: 'Izin: `platform.organizations.manage`. Body: `{ "status": "disetujui" | "ditolak", "reason": string }`. Alasan wajib untuk penolakan. Persetujuan membuat organisasi dan akun administrator.'
+      responses:
+        '200': { description: Pengajuan ditinjau }
+        '404': { description: '`ORGANIZATION_APPLICATION_NOT_FOUND`' }
+        '409': { description: '`ORGANIZATION_APPLICATION_STATUS_INVALID`, `ORGANIZATION_CODE_DUPLICATE`, atau `EMAIL_DUPLICATE`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m3/v1/partners/me/resubmissions:
+    post:
+      tags: [M3]
+      summary: Ajukan ulang pendaftaran yang ditolak
+      description: 'Izin: `m3.partner_status.read`. Body sama dengan data usaha saat mendaftar, tanpa email dan kata sandi.'
+      responses:
+        '200': { description: Status kembali pending }
+        '409': { description: '`PARTNER_STATUS_INVALID`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m5/v1/stores/{code}:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [M5]
+      summary: Profil toko publik satu organisasi
+      description: 'Publik. Data `{ id, code, name, business_units, partners, categories }`.'
+      security: []
+      responses:
+        '200': { description: Profil toko }
+        '404': { description: '`ORGANIZATION_NOT_FOUND`' }
+
+  /api/m5/v1/stores/{code}/products:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [M5]
+      summary: Produk toko publik dengan pencarian dan filter
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: business_unit_id, in: query, schema: { type: integer } }
+        - { name: partner_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Daftar produk; kosong bila tidak ada hasil }
+        '404': { description: '`ORGANIZATION_NOT_FOUND`' }
+
+  /api/m5/v1/customer-registrations:
+    post:
+      tags: [M5]
+      summary: Daftar sebagai customer
+      description: 'Publik. Body: `organization_code`, `name`, `email`, `password`, `phone`.'
+      security: []
+      responses:
+        '201': { description: Akun customer dibuat }
+        '409': { description: '`EMAIL_DUPLICATE` atau `CUSTOMER_ROLE_UNAVAILABLE`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m5/v1/customer-registrations/organizations/{code}:
+    parameters:
+      - { name: code, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [M5]
+      summary: Kenali organisasi dari tautan pendaftaran customer
+      security: []
+      responses:
+        '200': { description: 'Data `{ code, name }`' }
+        '404': { description: '`ORGANIZATION_NOT_FOUND`' }
+
+  /api/m5/v1/service-requests/mine:
+    get:
+      tags: [M5]
+      summary: Riwayat permintaan layanan milik pemanggil
+      description: 'Izin: `m5.service_requests.send`.'
+      responses:
+        '200': { description: Daftar permintaan }
+
+  /api/m5/v1/service-requests/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M5]
+      summary: Tindak lanjuti permintaan layanan
+      description: 'Izin: `m5.service_requests.read`. Urutan: baru, diproses, selesai.'
+      responses:
+        '200': { description: Status diperbarui }
+        '404': { description: '`SERVICE_REQUEST_NOT_FOUND`' }
+        '409': { description: '`SERVICE_REQUEST_STATUS_INVALID`' }
+
+  /api/m3/v1/partners/me:
+    get:
+      tags: [M3]
+      summary: Status pendaftaran partner yang login
+      description: 'Izin: `m3.partner_status.read`.'
+      responses:
+        '200': { description: Data partner beserta `status` dan `status_reason` }
+        '404': { description: '`PARTNER_NOT_FOUND`' }
+
+  /api/m3/v1/verified-partners:
+    get:
+      tags: [M3]
+      summary: Partner yang tampil di platform
+      responses:
+        '200': { description: Daftar partner terverifikasi }
+
+  /api/m3/v1/partners:
+    get:
+      tags: [M3]
+      summary: Daftar seluruh partner
+      description: 'Izin: `m3.partners.manage`.'
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: status, in: query, schema: { type: string, enum: [pending, terverifikasi, ditolak, ditangguhkan] } }
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Daftar partner }
+
+  /api/m3/v1/partners/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [M3]
+      summary: Detail partner
+      description: 'Izin: `m3.partners.manage`.'
+      responses:
+        '200': { description: Data partner }
+        '404': { description: '`PARTNER_NOT_FOUND`' }
+
+  /api/m3/v1/partners/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M3]
+      summary: Verifikasi, tolak, tangguhkan, atau aktifkan kembali partner
+      description: 'Izin: `m3.partners.manage`. `reason` wajib untuk `ditolak` dan `ditangguhkan`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [terverifikasi, ditolak, ditangguhkan] }
+                reason: { type: string }
+      responses:
+        '200': { description: Status diperbarui }
+        '409': { description: '`PARTNER_STATUS_INVALID`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  # ---- M4: produk, pelanggan, quotation, invoice, pembayaran, order ----
+  /api/m4/v1/products:
+    get:
+      tags: [M4]
+      summary: Daftar produk/jasa
+      description: 'Izin: `m4.products.manage`. Partner hanya melihat produknya sendiri.'
+      responses:
+        '200': { description: Daftar produk }
+    post:
+      tags: [M4]
+      summary: Tambah produk/jasa
+      description: 'Izin: `m4.products.manage`. Partner harus terverifikasi.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductRequest' }
+      responses:
+        '201': { description: Produk dibuat }
+        '403': { description: '`PARTNER_NOT_VERIFIED`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m4/v1/products/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M4]
+      summary: Ubah produk/jasa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductRequest' }
+      responses:
+        '200': { description: Produk diperbarui }
+        '404': { description: '`PRODUCT_NOT_FOUND`' }
+
+  /api/m4/v1/products/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M4]
+      summary: Aktifkan atau nonaktifkan produk/jasa
+      responses:
+        '200': { description: Status diperbarui }
+        '409': { description: '`PRODUCT_STATUS_UNCHANGED`' }
+
+  /api/m4/v1/customers:
+    get:
+      tags: [M4]
+      summary: Daftar pelanggan
+      description: 'Izin: `m4.customers.manage`. Partner harus terverifikasi.'
+      responses:
+        '200': { description: Daftar pelanggan }
+    post:
+      tags: [M4]
+      summary: Tambah pelanggan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerRequest' }
+      responses:
+        '201': { description: Pelanggan dibuat }
+        '409': { description: '`CUSTOMER_EMAIL_DUPLICATE`' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m4/v1/customers/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M4]
+      summary: Ubah pelanggan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerRequest' }
+      responses:
+        '200': { description: Pelanggan diperbarui }
+        '404': { description: '`CUSTOMER_NOT_FOUND`' }
+
+  /api/m4/v1/quotations:
+    get:
+      tags: [M4]
+      summary: Daftar quotation sesuai cakupan pemanggil
+      responses:
+        '200': { description: Daftar quotation }
+    post:
+      tags: [M4]
+      summary: Buat quotation
+      description: 'Izin: `m4.quotations.manage`. Harga diambil dari data produk.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, items]
+              properties:
+                customer_id: { type: integer }
+                notes: { type: string, nullable: true }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [product_id, qty]
+                    properties:
+                      product_id: { type: integer }
+                      qty: { type: integer }
+      responses:
+        '201': { description: Quotation dibuat dengan status menunggu }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/m4/v1/quotations/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [M4]
+      summary: Detail quotation beserta item
+      responses:
+        '200': { description: Quotation }
+        '404': { description: '`QUOTATION_NOT_FOUND`' }
+
+  /api/m4/v1/quotations/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M4]
+      summary: Setujui atau tolak quotation
+      description: 'Izin: `m4.quotations.respond`. Body: `{ "status": "disetujui" | "ditolak", "note": string }`. Customer menanggapi langsung; penjual wajib mengisi `note` sebagai bukti tanggapan di luar sistem.'
+      responses:
+        '200': { description: Status diperbarui }
+        '409': { description: '`QUOTATION_STATUS_INVALID`' }
+
+  /api/m4/v1/invoices:
+    get:
+      tags: [M4]
+      summary: Daftar invoice sesuai cakupan pemanggil
+      responses:
+        '200': { description: Daftar invoice }
+    post:
+      tags: [M4]
+      summary: Buat invoice dari quotation yang disetujui
+      description: 'Izin: `m4.invoices.manage`. Body: `{ "quotation_id": integer }`.'
+      responses:
+        '201': { description: Invoice dibuat dengan status belum_lunas }
+        '409': { description: '`QUOTATION_NOT_APPROVED` atau `INVOICE_ALREADY_EXISTS`' }
+
+  /api/m4/v1/invoices/{id}/payments:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [M4]
+      summary: Bayar invoice lewat payment gateway sandbox
+      description: >-
+        Izin: `m4.invoices.pay`, khusus customer pemilik invoice. Body opsional:
+        `{ "simulate": "berhasil" | "gagal" }`. Percobaan yang gagal tetap tercatat dan
+        menjawab 201 dengan `payment.status` = `gagal` dan `invoice.status` = `belum_lunas`.
+      responses:
+        '201': { description: 'Data `{ payment, invoice }`' }
+        '404': { description: '`INVOICE_NOT_FOUND`' }
+        '409': { description: '`INVOICE_ALREADY_PAID` atau `INVOICE_CANCELLED`' }
+
+  /api/m4/v1/orders:
+    get:
+      tags: [M4]
+      summary: Daftar order sesuai cakupan pemanggil
+      responses:
+        '200': { description: Daftar order }
+
+  /api/m4/v1/orders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [M4]
+      summary: Detail order beserta item
+      responses:
+        '200': { description: Order }
+        '404': { description: '`ORDER_NOT_FOUND`' }
+
+  /api/m4/v1/orders/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [M4]
+      summary: Perbarui status order atau batalkan
+      description: 'Izin: `m4.orders.update` untuk baru, diproses, selesai. Customer pemilik memakai `m4.orders.read` hanya untuk `dibatalkan`, selama Order baru dan belum dibayar. Staf unit dibatasi ke unitnya.'
+      responses:
+        '200': { description: Status dan `status_changed_at` diperbarui }
+        '409': { description: '`ORDER_ALREADY_COMPLETED`, `ORDER_STATUS_INVALID`, `ORDER_CANCEL_NOT_ALLOWED`, atau `ORDER_ALREADY_PAID`' }
+
+  # ---- M5: katalog, keranjang, checkout, permintaan layanan ----
+  /api/m5/v1/catalog/business-units:
+    get:
+      tags: [M5]
+      summary: Profil seluruh unit usaha aktif
+      responses:
+        '200': { description: Daftar unit usaha aktif }
+
+  /api/m5/v1/catalog/categories:
+    get:
+      tags: [M5]
+      summary: Kategori produk yang tampil di katalog
+      responses:
+        '200': { description: Daftar kategori }
+
+  /api/m5/v1/catalog/products:
+    get:
+      tags: [M5]
+      summary: Cari dan saring katalog
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: business_unit_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Daftar produk; kosong bila tidak ada hasil }
+
+  /api/m5/v1/cart:
+    get:
+      tags: [M5]
+      summary: Isi keranjang
+      description: 'Izin: `m5.cart.manage`.'
+      responses:
+        '200': { description: 'Data `{ items, count, total }`' }
+
+  /api/m5/v1/cart/items:
+    post:
+      tags: [M5]
+      summary: Tambah produk ke keranjang
+      description: 'Body: `{ "product_id": integer, "qty": integer }`. `qty` opsional. Produk yang sudah ada ditambah qty-nya.'
+      responses:
+        '200': { description: Keranjang terbaru }
+        '404': { description: '`PRODUCT_NOT_FOUND`' }
+
+  /api/m5/v1/cart/items/{id}:
+    parameters:
+      - { name: id, in: path, required: true, description: Id produk, schema: { type: integer } }
+    patch:
+      tags: [M5]
+      summary: Ubah qty item keranjang
+      description: 'Body: `{ "qty": integer }`.'
+      responses:
+        '200': { description: Keranjang terbaru }
+        '404': { description: '`CART_ITEM_NOT_FOUND`' }
+    delete:
+      tags: [M5]
+      summary: Hapus item keranjang
+      responses:
+        '200': { description: Keranjang terbaru }
+        '404': { description: '`CART_ITEM_NOT_FOUND`' }
+
+  /api/m5/v1/checkouts:
+    post:
+      tags: [M5]
+      summary: Checkout keranjang menjadi Order
+      description: Membentuk satu Order per penjual lewat kontrak M4, lalu mengosongkan keranjang.
+      responses:
+        '201': { description: 'Data `{ order_ids: [...] }`. Satu invoice `belum_lunas` terbit untuk tiap Order.' }
+        '409': { description: '`CART_EMPTY`, `CART_ITEM_UNAVAILABLE`, atau `OUT_OF_STOCK`' }
+
+  /api/m5/v1/service-requests:
+    get:
+      tags: [M5]
+      summary: Permintaan layanan yang masuk
+      description: 'Izin: `m5.service_requests.read`. Staf dengan `unit_usaha_id` hanya melihat unitnya.'
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - { name: business_unit_id, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Daftar permintaan }
+    post:
+      tags: [M5]
+      summary: Kirim permintaan layanan ke unit usaha
+      description: 'Izin: `m5.service_requests.send`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_unit_id, contact_name, contact_email, contact_phone, subject, message]
+              properties:
+                business_unit_id: { type: integer }
+                contact_name: { type: string }
+                contact_email: { type: string, format: email }
+                contact_phone: { type: string }
+                subject: { type: string }
+                message: { type: string }
+      responses:
+        '201': { description: Permintaan diteruskan }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
 components:
 
   securitySchemes:
@@ -645,6 +1289,25 @@ components:
       { name: id, in: path, required: true, schema: { type: integer, format: int64, minimum: 1 } }
 
   schemas:
+    ProductRequest:
+      type: object
+      required: [type, name, category, price]
+      properties:
+        business_unit_id: { type: integer, nullable: true, description: Wajib untuk produk organisasi; opsional untuk produk partner }
+        stock: { type: integer, nullable: true, description: Wajib untuk type produk; diabaikan untuk jasa }
+        type: { type: string, enum: [produk, jasa] }
+        name: { type: string }
+        category: { type: string }
+        description: { type: string, nullable: true }
+        price: { type: integer, description: Rupiah bulat }
+    CustomerRequest:
+      type: object
+      required: [name, email, phone]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        address: { type: string, nullable: true }
 
     SuccessEnvelope:
       type: object

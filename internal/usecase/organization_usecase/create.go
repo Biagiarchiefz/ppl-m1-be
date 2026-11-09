@@ -8,6 +8,7 @@ import (
 	"ppl-m1-be/internal/usecase/audit_usecase"
 	"ppl-m1-be/internal/usecase/repository"
 	"ppl-m1-be/internal/usecase/repository/sqlc"
+	"ppl-m1-be/internal/usecase/role_usecase"
 	"ppl-m1-be/internal/usecase/utils"
 )
 
@@ -60,6 +61,9 @@ func createAdmin(ctx context.Context, q *sqlc.Queries, org sqlc.Organization, in
 		OrganizationID: org.ID, Code: utils.SystemRoleCode, Name: utils.SystemRoleName, IsSystem: true,
 	})
 	if err != nil {
+		return CreateResult{}, err
+	}
+	if err := role_usecase.ProvisionDefaults(ctx, q, org.ID); err != nil {
 		return CreateResult{}, err
 	}
 	email := strings.ToLower(strings.TrimSpace(in.Admin.Email))

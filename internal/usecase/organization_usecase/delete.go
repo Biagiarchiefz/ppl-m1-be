@@ -36,6 +36,7 @@ func deleteOrganization(ctx context.Context, q *sqlc.Queries, actor audit_usecas
 		return err
 	}
 	steps := []func(context.Context, int64) error{
+		q.DeleteOrganizationBusinessUnits,
 		func(ctx context.Context, id int64) error { return q.DeleteOrganizationUsers(ctx, audit_usecase.ID(id)) },
 		q.DeleteOrganizationRoles, q.DeleteOrganizationDivisions, q.DeleteOrganization,
 	}

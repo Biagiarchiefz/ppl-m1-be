@@ -28,6 +28,72 @@ type AuditLog struct {
 	OrganizationName sql.NullString
 }
 
+type BusinessUnit struct {
+	ID             int64
+	OrganizationID int64
+	DivisionID     sql.NullInt64
+	Code           string
+	Name           string
+	Category       string
+	Description    sql.NullString
+	Address        sql.NullString
+	Phone          sql.NullString
+	Email          sql.NullString
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type BusinessUnitDetail struct {
+	ID             int64
+	OrganizationID int64
+	DivisionID     sql.NullInt64
+	Code           string
+	Name           string
+	Category       string
+	Description    sql.NullString
+	Address        sql.NullString
+	Phone          sql.NullString
+	Email          sql.NullString
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DivisionName   sql.NullString
+}
+
+type CartItem struct {
+	UserID    int64
+	ProductID int64
+	Qty       int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type Customer struct {
+	ID             int64
+	OrganizationID int64
+	UserID         sql.NullInt64
+	Name           string
+	Email          string
+	Phone          sql.NullString
+	Address        sql.NullString
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type DashboardMetric struct {
+	ID             int64
+	OrganizationID int64
+	BusinessUnitID sql.NullInt64
+	SourceModule   string
+	MetricKey      string
+	Label          string
+	Unit           string
+	Value          int64
+	PeriodDate     time.Time
+	UpdatedAt      time.Time
+}
+
 type Division struct {
 	ID             int64
 	OrganizationID int64
@@ -36,6 +102,76 @@ type Division struct {
 	IsActive       bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+type Invoice struct {
+	ID             int64
+	OrganizationID int64
+	QuotationID    sql.NullInt64
+	PartnerID      sql.NullInt64
+	CustomerID     int64
+	Total          int64
+	Status         string
+	PaidAt         sql.NullTime
+	CreatedBy      sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	OrderID        sql.NullInt64
+}
+
+type InvoiceDetail struct {
+	ID             int64
+	OrganizationID int64
+	QuotationID    sql.NullInt64
+	OrderID        sql.NullInt64
+	PartnerID      sql.NullInt64
+	CustomerID     int64
+	Total          int64
+	Status         string
+	PaidAt         sql.NullTime
+	CreatedAt      time.Time
+	CustomerName   string
+	PartnerName    sql.NullString
+}
+
+type Order struct {
+	ID              int64
+	OrganizationID  int64
+	PartnerID       sql.NullInt64
+	CustomerID      int64
+	Status          string
+	Total           int64
+	StatusChangedAt time.Time
+	CreatedAt       time.Time
+	BusinessUnitID  sql.NullInt64
+}
+
+type OrderDetail struct {
+	ID               int64
+	OrganizationID   int64
+	PartnerID        sql.NullInt64
+	BusinessUnitID   sql.NullInt64
+	CustomerID       int64
+	Status           string
+	Total            int64
+	StatusChangedAt  time.Time
+	CreatedAt        time.Time
+	CustomerName     string
+	PartnerName      sql.NullString
+	BusinessUnitName sql.NullString
+	InvoiceID        sql.NullInt64
+	InvoiceStatus    sql.NullString
+}
+
+type OrderItem struct {
+	ID             int64
+	OrderID        int64
+	ProductID      sql.NullInt64
+	BusinessUnitID sql.NullInt64
+	ProductName    string
+	Price          int64
+	Qty            int32
+	Subtotal       int64
 }
 
 type Organization struct {
@@ -48,10 +184,144 @@ type Organization struct {
 	DeactivatedAt sql.NullTime
 }
 
+type OrganizationApplication struct {
+	ID               int64
+	Code             string
+	OrganizationName string
+	AdminName        string
+	AdminEmail       string
+	PasswordHash     string
+	Phone            string
+	Description      sql.NullString
+	Status           string
+	StatusReason     sql.NullString
+	OrganizationID   sql.NullInt64
+	ReviewedBy       sql.NullInt64
+	ReviewedAt       sql.NullTime
+	CreatedAt        time.Time
+}
+
+type Partner struct {
+	ID             int64
+	OrganizationID int64
+	UserID         sql.NullInt64
+	BusinessName   string
+	BusinessType   string
+	ContactName    string
+	Email          string
+	Phone          string
+	Address        string
+	Description    sql.NullString
+	Status         string
+	StatusReason   sql.NullString
+	VerifiedAt     sql.NullTime
+	VerifiedBy     sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type PartnerCustomer struct {
+	OrganizationID int64
+	PartnerID      int64
+	CustomerID     int64
+	CreatedAt      time.Time
+}
+
+type Payment struct {
+	ID        int64
+	InvoiceID int64
+	Provider  string
+	Reference string
+	Amount    int64
+	Status    string
+	Message   string
+	CreatedAt time.Time
+}
+
 type Permission struct {
 	Code        string
 	Module      string
 	Description string
+}
+
+type Product struct {
+	ID             int64
+	OrganizationID int64
+	BusinessUnitID sql.NullInt64
+	PartnerID      sql.NullInt64
+	Type           string
+	Name           string
+	Category       string
+	Description    sql.NullString
+	Price          int64
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Stock          sql.NullInt32
+}
+
+type ProductDetail struct {
+	ID                   int64
+	OrganizationID       int64
+	BusinessUnitID       sql.NullInt64
+	PartnerID            sql.NullInt64
+	Type                 string
+	Name                 string
+	Category             string
+	Description          sql.NullString
+	Price                int64
+	IsActive             bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	Stock                sql.NullInt32
+	BusinessUnitName     sql.NullString
+	BusinessUnitIsActive sql.NullBool
+	PartnerName          sql.NullString
+	PartnerStatus        sql.NullString
+}
+
+type Quotation struct {
+	ID             int64
+	OrganizationID int64
+	PartnerID      sql.NullInt64
+	CustomerID     int64
+	Status         string
+	Notes          sql.NullString
+	Total          int64
+	CreatedBy      sql.NullInt64
+	RespondedAt    sql.NullTime
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ResponseSource sql.NullString
+	ResponseNote   sql.NullString
+}
+
+type QuotationDetail struct {
+	ID             int64
+	OrganizationID int64
+	PartnerID      sql.NullInt64
+	CustomerID     int64
+	Status         string
+	Notes          sql.NullString
+	Total          int64
+	RespondedAt    sql.NullTime
+	CreatedAt      time.Time
+	ResponseSource sql.NullString
+	ResponseNote   sql.NullString
+	CustomerName   string
+	PartnerName    sql.NullString
+	InvoiceID      sql.NullInt64
+}
+
+type QuotationItem struct {
+	ID             int64
+	QuotationID    int64
+	ProductID      sql.NullInt64
+	BusinessUnitID sql.NullInt64
+	ProductName    string
+	Price          int64
+	Qty            int32
+	Subtotal       int64
 }
 
 type Role struct {
@@ -69,6 +339,37 @@ type Role struct {
 type RolePermission struct {
 	RoleID         int64
 	PermissionCode string
+}
+
+type ServiceRequest struct {
+	ID              int64
+	OrganizationID  int64
+	BusinessUnitID  int64
+	UserID          sql.NullInt64
+	ContactName     string
+	ContactEmail    string
+	ContactPhone    string
+	Subject         string
+	Message         string
+	Status          string
+	CreatedAt       time.Time
+	StatusChangedAt time.Time
+}
+
+type ServiceRequestDetail struct {
+	ID               int64
+	OrganizationID   int64
+	BusinessUnitID   int64
+	UserID           sql.NullInt64
+	ContactName      string
+	ContactEmail     string
+	ContactPhone     string
+	Subject          string
+	Message          string
+	Status           string
+	CreatedAt        time.Time
+	StatusChangedAt  time.Time
+	BusinessUnitName string
 }
 
 type User struct {

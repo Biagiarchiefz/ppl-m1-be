@@ -25,6 +25,7 @@ func NewRouter(db *sql.DB, cfg config.Config) *gin.Engine {
 	mountHealth(router, db)
 
 	mountAPI(router.Group("/api/m1/v1"), db, cfg)
+	mountModules(router, db, cfg)
 	return router
 }
 
